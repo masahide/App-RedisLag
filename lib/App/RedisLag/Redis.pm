@@ -1,18 +1,16 @@
 package App::RedisLag::Redis;
+use strict;
+use warnings;
 
 use IO::Socket::INET;
-use Time::HiRes;
+use IO::Select;
 
+use constant EXPIRE => 600;
 
 sub new{
 	my $class = shift;
 
 	my $self = bless {
-		key			=> "ae9974b9-0ff5-4f7c-a572-4442fa0ef2d5",
-		lag			=> 0,
-		timeout		=> 120.000,
-		wait		=> 0.020,
-		set_time	=> undef,
 		socket		=> undef,
 		host		=> "localhost",
 		port		=> 6379,
@@ -26,54 +24,10 @@ sub new{
 
 
 #アクセサ
-sub lag{
-	$self = shift ;
-	return ( $_[0] )?  $self->{lag} = $_[0] : $self->{lag};
-}
-sub set_time{
-	$self = shift ;
-	return ( $_[0] )? $self->{set_time} = $_[0] :  $self->{set_time};
-}
-sub timeout{
-	$self = shift ;
-	return ( $_[0] )? $self->{timeout} = $_[0] :  $self->{timeout};
-}
 sub error_msg{
-	$self = shift ;
+	my $self = shift ;
 	return ( $_[0] )?  $self->{error_msg} = $_[0] : $self->{error_msg};
 }
-
-sub set_check_value {
-	my ($self) = @_;
-	$self->{set_time} = Time::HiRes::time;
-	if($self->set_value($self->{key},$self->{set_time})){
-		return $self->{set_time};
-	}
-	return 0;
-}
-sub get_check_value {
-	my ($self, $set_time) = @_;
-	if($set_time){ $self->{set_time} = $set_time; }
-	$set_time = $self->{set_time};
-	if(!$set_time){
-		return 0;
-	}
-	while(1){
-		$time = Time::HiRes::time;
-		if($self->{timeout} < ($time - $set_time)){
-			return $self->{timeout};
-		}
-		$value = $self->get_value($self->{key});
-		if(!$value){
-			return $value;
-		}
-		elsif($set_time eq $value){
-			return $time - $set_time;
-		}
-		Time::HiRes::sleep($self->{wait});
-	}
-}
-
 sub error {
 	my ($self, $msg, $err_no) = @_;
 	$self->{error_msg} = "$msg : $err_no";
@@ -89,10 +43,13 @@ sub connect {
 	}
 	if($host){ $self->{host} = $host; }
 	if($port){ $self->{port} = $port; }
+	if($pass){ $self->{port} = $pass; }
 	my $server = $self->{host}.":".$self->{port};
 	$self->{server}=$server;
 	my $sock = IO::Socket::INET->new(
 		PeerAddr=>$server,
+		TimeOut=>5,
+		Blocking=>0,
 		Proto=>'tcp');
 	if($sock){
 		if ($pass) {
@@ -110,8 +67,13 @@ sub connect {
 
 sub close {
 	my ($self) = @_;
-	$s = $self->{socket};
-	return $s ? $s->close() : $s;
+	my $s = $self->{socket};
+	if($s){
+		if($s->connected){
+			return $s->close();
+		}
+	}
+	return $s;
 }
 
 sub DESTROY {
@@ -121,34 +83,52 @@ sub DESTROY {
 
 sub set_value {
 	my ($self,$key,$value) = @_;
-	$s = $self->{socket};
-	$server = $self->{server};
-	if(!$s->connected){
-		return $self->error("[$server] Disconnected.",-1);
-	}
-	$s->print("SET $key $value\r\n");
-	my $status = <$s> || return $self->error("[$server] socket read error", $!);
-	if($status !~ /^\+OK/){
-		return $self->error("[$server] set_value socket read error[$status]",-1);
+	my $status;
+	my @lines = $self->write_read("SET $key $value\r\nEXPIRE $key ".EXPIRE."\r\n");
+	if(!$#lines){ return 0;}
+	if($#lines != 1 ||
+	   ($lines[0] !~ /^\+OK/ && $lines[1] !~ /^\:1/)
+	){
+		return $self->error("[".$self->{server}."] get($key) socket read error", join(",",@lines));
 	}
 	return $self;
 }
 
 sub get_value {
 	my ($self,$key) = @_;
-	$s = $self->{socket};
-	$server = $self->{server};
-	if(!$s->connected){
-		return $self->error("[$server] Disconnected.",-1);
+	$self->connect();
+	my @lines = $self->write_read("GET $key\r\n");
+	if(!$#lines){ return 0;}
+	if($#lines != 1){
+		return $self->error("[".$self->{server}."] get($key) socket read error", -1);
 	}
-	$s->print("GET $key\r\n");
-	my $count = <$s> || return "[$server] get_value1 socket read1 error: $!";
-	$s->read(my $buf, substr($count, 1) ) or return $self->error("[$server] get($key) socket read2 error", $!.":".$count);
-	$s->getline() or return $self->error("[$server] get($key) socket read3 error", $!.":".$count);
-	return $buf;
+	return $lines[1];
 }
 
 
+sub write_read {
+	my ($self,$in) = @_;
+	$self->connect();
+	my $s = $self->{socket};
+	my $server = $self->{server};
+	my $selecter = IO::Select->new;
+	$selecter->add($s);
+	$s->print($in);
+	$s->flush();
+	my $buf;
+	my @lines;
+	my @ready = $selecter->can_read(5);
+	if(@ready){
+		my $len = read($s, $buf, 4096);
+		$selecter->remove($s);
+		@lines = split(/\r\n/,$buf);
+	}
+	else{
+		@lines = ();
+	}
+	$selecter->remove($s);
+	return @lines;
+}
 	
 	
 
