@@ -1,0 +1,27 @@
+This is Perl module App::RedisLag.
+
+INSTALLATION
+
+App::RedisLag installation is straightforward. If your CPAN shell is set up,
+you should just be able to do
+
+    % cpan App::RedisLag
+
+Download it, unpack it, then build it as per the usual:
+
+    % perl Makefile.PL
+    % make && make test
+
+Then install it:
+
+    % make install
+
+DOCUMENTATION
+
+App::RedisLag documentation is available as in POD. So you can do:
+
+    % perldoc App::RedisLag
+
+to read the documentation online with your favorite pager.
+
+YAMASAKI Masahide
