@@ -78,6 +78,20 @@ sub sum {
 }
 
 
+sub run_loop {
+	my ($self) = @_;
+	while(1){
+		my $time = $self->set_check_value();
+		if($time){
+			$time  = $self->get_check_value($time);
+		}
+		if($time){
+			$self->add_ring_buf({date=>time(),time=>$time});
+		}
+		sleep(1);
+	}
+}
+
 sub set_check_value {
 	my ($self) = @_;
 	$self->{set_time} = Time::HiRes::time;
