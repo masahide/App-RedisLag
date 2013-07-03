@@ -6,6 +6,8 @@ our $VERSION = '0.01';
 use Time::HiRes;
 use App::RedisLag::Redis;
 
+use constant KEY_PREFIX =>"RedisLag";
+
 sub new{
 	my $class = shift;
 
@@ -19,11 +21,13 @@ sub new{
 		slave		=> undef,
 		slave_host	=> 'localhost',
 		slave_port	=> 6379,
+		slave_name  => 'slave',
 		master_host	=> 'localhost',
 		master_port	=> 6379,
 		ring_buf	=> [],
 		@_,
 	}, $class;
+	$self->{result_key}	= KEY_PREFIX."-".$self->{slave_name};
 	$self->{slave}  = App::RedisLag::Redis->new(host=>$self->{slave_host},port=>$self->{slave_port});
 	$self->{master} = App::RedisLag::Redis->new(host=>$self->{master_host},port=>$self->{master_port});
 	$self;
@@ -78,20 +82,28 @@ sub sum {
 }
 
 
-sub run_loop {
+sub run {
 	my ($self) = @_;
-	while(1){
-		my $time = $self->set_check_value();
-		if($time){
-			$time  = $self->get_check_value($time);
-		}
-		if($time){
-			$self->add_ring_buf({date=>time(),time=>$time});
-		}
-		sleep(1);
+	my $time = $self->set_check_value();
+	if(!$time){
+		return $time;
 	}
+	$time  = $self->get_check_value($time);
+	if(!$time){
+		return $time
+	}
+	$self->add_ring_buf({date=>time(),time=>$time});
+	my $sum = $self->sum();
+	$self->{master}->set_value(
+		$self->{result_key},
+		"min\t".$sum->{min}."\tmax\t".$sum->{max}."\tavg\t".$sum->{avg}
+	);
 }
 
+sub get_result {
+	my ($self) = @_;
+	return $self->{master}->get_value($self->{result_key});
+}
 sub set_check_value {
 	my ($self) = @_;
 	$self->{set_time} = Time::HiRes::time;
