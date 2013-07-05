@@ -1,7 +1,9 @@
 package App::RedisLag;
 use strict;
 use warnings;
+use Sys::Syslog;
 our $VERSION = '0.01';
+
 
 use Time::HiRes;
 use App::RedisLag::Redis;
@@ -16,20 +18,26 @@ sub new{
 		lag			=> 0,
 		timeout		=> 120,
 		wait		=> 0.020,
+		verbose		=> 0,
+		debug		=> 0,
+		daemon		=> 0,
 		set_time	=> undef,
 		master		=> undef,
 		slave		=> undef,
 		slave_host	=> 'localhost',
 		slave_port	=> 6379,
-		slave_name  => 'slave',
+		result_key  => 'slave',
 		master_host	=> 'localhost',
 		master_port	=> 6379,
 		ring_buf	=> [],
 		@_,
 	}, $class;
-	$self->{result_key}	= KEY_PREFIX."-".$self->{slave_name};
+	$self->{result_key}	= KEY_PREFIX."-".$self->{result_key};
 	$self->{slave}  = App::RedisLag::Redis->new(host=>$self->{slave_host},port=>$self->{slave_port});
 	$self->{master} = App::RedisLag::Redis->new(host=>$self->{master_host},port=>$self->{master_port});
+	$self->{verbose} = 1 if $self->{debug};
+	openlog("ReidsLag",'cons,pid', 'local5') if $self->{daemon};
+	
 	$self;
 }
 
@@ -85,10 +93,12 @@ sub sum {
 sub run {
 	my ($self) = @_;
 	my $time = $self->set_check_value();
+	$self->puts('debug', "set check value: $time") if $self->{debug};
 	if(!$time){
 		return $time;
 	}
 	$time  = $self->get_check_value($time);
+	$self->puts('debug', "get check value: $time" ) if $self->{debug};
 	if(!$time){
 		return $time
 	}
@@ -96,13 +106,23 @@ sub run {
 	my $sum = $self->sum();
 	$self->{master}->set_value(
 		$self->{result_key},
-		"min\t".$sum->{min}."\tmax\t".$sum->{max}."\tavg\t".$sum->{avg}
+		"current:$time\tmin:$sum->{min}\tmax:$sum->{max}\tavg:$sum->{avg}"
 	);
+	if($self->{verbose}){
+		my $message = "current=>$time";
+		map{ $message .= ", $_=>$sum->{$_}" } keys %{$sum};
+		$self->puts('debug', $message);
+	}
 }
 
 sub get_result {
 	my ($self) = @_;
-	return $self->{master}->get_value($self->{result_key});
+	my $line = $self->{master}->get_value($self->{result_key});
+	my %kv;
+	for (map { [ split ':', $_, 2 ] } split "\t", $line) {
+		$kv{$_->[0]} = $_->[1];
+	}
+	return \%kv;
 }
 sub set_check_value {
 	my ($self) = @_;
@@ -133,6 +153,17 @@ sub get_check_value {
 		}
 		Time::HiRes::sleep($self->{wait});
 	}
+}
+
+sub puts {
+	my ($self, $type,$message) = @_;
+	if($self->{daemon}){
+		syslog($type,$message);
+	}
+	else{
+		print $message."\n";
+	}
+
 }
 
 1;
