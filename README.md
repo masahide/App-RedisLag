@@ -20,5 +20,7 @@ https://github.com/toritori0318/p5-App-RedisTop
 
 App::FatPacker を使って1ファイルのスクリプトにパックできます。
 
+```
 $ cpanm install App::FatPacker
 $ PERL5LIB=./lib/ fatpack pack bin/redis-lag >redis-lag-packed.pl
+```
