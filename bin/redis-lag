@@ -27,6 +27,7 @@ sub start {
 
 	GetOptions(
 		'd|daemon'			=> \$opt->{daemon},
+		'pidfile=s'			=> \$opt->{pidfile},
 		'v|verbose'			=> \$opt->{verbose},
 		's|slave_host=s'	=> \$opt->{slave_host},
 		'm|master_host=s'	=> \$opt->{master_host},
@@ -52,6 +53,7 @@ sub start {
 	my $slave_host  = $opt->{slave_host}  ? $opt->{slave_host}  : '127.0.0.1';
 	my $master_host = $opt->{master_host} ? $opt->{master_host} : '127.0.0.1';
 	my $result_key  = $opt->{result_key}  ? $opt->{result_key} : 'slave';
+	my $pidfile		= $opt->{pidfile}  ? $opt->{pidfile} : '/tmp/redis-lag.pid';
 
 
 	$self->{redis_lag} = App::RedisLag->new(
@@ -86,6 +88,9 @@ sub start {
 		exit 0 if $pid; # 親プロセスは終了する
 		POSIX::setsid() ||
 			die "Could not detach from parent process\n";
+		open(OUT, ">$pidfile");
+		print OUT POSIX::getpid;
+		close(OUT);
 		$self->run_loop();
 	}
 	else{
