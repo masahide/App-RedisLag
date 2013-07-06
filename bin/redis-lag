@@ -70,10 +70,12 @@ sub start {
                         
     if($opt->{munin_result}){
         my $result = $self->{redis_lag}->get_result();
-        print "current.value $result->{current}\n";
-        print "avg.value $result->{avg}\n";
-        print "max.value $result->{max}\n";
-        print "min.value $result->{min}\n";
+		if($result){
+			print "current.value $result->{current}\n";
+			print "avg.value $result->{avg}\n";
+			print "max.value $result->{max}\n";
+			print "min.value $result->{min}\n";
+		}
         exit 0;
     }
 

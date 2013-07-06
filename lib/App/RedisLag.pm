@@ -104,10 +104,9 @@ sub run {
 	}
 	$self->add_ring_buf({date=>time(),time=>$time});
 	my $sum = $self->sum();
-	$self->{master}->set_value(
-		$self->{result_key},
-		"current:$time\tmin:$sum->{min}\tmax:$sum->{max}\tavg:$sum->{avg}"
-	);
+	my $value = "current:$time\tmin:$sum->{min}\tmax:$sum->{max}\tavg:$sum->{avg}";
+	$self->{master}->set_value( $self->{result_key}, $value);
+	$self->puts('debug', "set result_key:$self->{result_key} value: $value") if $self->{debug};
 	if($self->{verbose}){
 		my $message = "current=>$time";
 		map{ $message .= ", $_=>$sum->{$_}" } keys %{$sum};
@@ -118,11 +117,17 @@ sub run {
 sub get_result {
 	my ($self) = @_;
 	my $line = $self->{master}->get_value($self->{result_key});
-	my %kv;
-	for (map { [ split ':', $_, 2 ] } split "\t", $line) {
-		$kv{$_->[0]} = $_->[1];
+	$self->puts('debug', "get result_key:$self->{result_key} value: $line") if $self->{debug};
+	if($line =~ /\t/){
+		my %kv;
+		for (map { [ split ':', $_, 2 ] } split "\t", $line) {
+			$kv{$_->[0]} = $_->[1];
+		}
+		return \%kv;
 	}
-	return \%kv;
+	else{
+		return 0;
+	}
 }
 sub set_check_value {
 	my ($self) = @_;
