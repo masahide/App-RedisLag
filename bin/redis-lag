@@ -12,101 +12,101 @@ use App::RedisLag;
 package main;
 
 sub new{
-	my $class = shift;
-	my $self = bless {
-		sleep		=> undef,
-		redis_lag	=> undef,
-		@_,
-	}, $class;
-	$self;
+    my $class = shift;
+    my $self = bless {
+        sleep       => undef,
+        redis_lag   => undef,
+        @_,
+    }, $class;
+    $self;
 }
 
 sub start {
-	my $self = shift ;
-	my $opt = +{};
+    my $self = shift ;
+    my $opt = +{};
 
-	GetOptions(
-		'd|daemon'			=> \$opt->{daemon},
-		'pidfile=s'			=> \$opt->{pidfile},
-		'v|verbose'			=> \$opt->{verbose},
-		's|slave_host=s'	=> \$opt->{slave_host},
-		'm|master_host=s'	=> \$opt->{master_host},
-		'p|port=i'			=> \$opt->{port},
-		'k|result_key=s'	=> \$opt->{result_key},
-		'master_port=i'		=> \$opt->{master_port},
-		'slave_port=i'		=> \$opt->{slave_port},
-		't|timeout=i'		=> \$opt->{timeout},
-		'sleep=i'			=> \$opt->{sleep},
-		'debug'				=> \$opt->{debug},
-		'munin_result'		=> \$opt->{munin_result},
-		'h|help'			=> \$opt->{help},
-	) or pod2usage 1;
-	if ($opt->{help}){
-		pod2usage 1;
-	}
+    GetOptions(
+        'd|daemon'          => \$opt->{daemon},
+        'pidfile=s'         => \$opt->{pidfile},
+        'v|verbose'         => \$opt->{verbose},
+        's|slave_host=s'    => \$opt->{slave_host},
+        'm|master_host=s'   => \$opt->{master_host},
+        'p|port=i'          => \$opt->{port},
+        'k|result_key=s'    => \$opt->{result_key},
+        'master_port=i'     => \$opt->{master_port},
+        'slave_port=i'      => \$opt->{slave_port},
+        't|timeout=i'       => \$opt->{timeout},
+        'sleep=i'           => \$opt->{sleep},
+        'debug'             => \$opt->{debug},
+        'munin_result'      => \$opt->{munin_result},
+        'h|help'            => \$opt->{help},
+    ) or pod2usage 1;
+    if ($opt->{help}){
+        pod2usage 1;
+    }
 
-	$self->{sleep} = $opt->{sleep}		    || 1;
-	my $timeout     = $opt->{timeout}		|| 120;
-	my $port        = $opt->{port}			|| 6379;
-	my $slave_port  = $opt->{slave_port}	|| $port;
-	my $master_port = $opt->{master_port}	|| $port;
-	my $slave_host  = $opt->{slave_host}  ? $opt->{slave_host}  : '127.0.0.1';
-	my $master_host = $opt->{master_host} ? $opt->{master_host} : '127.0.0.1';
-	my $result_key  = $opt->{result_key}  ? $opt->{result_key} : 'slave';
-	my $pidfile		= $opt->{pidfile}  ? $opt->{pidfile} : '/tmp/redis-lag.pid';
+    $self->{sleep} = $opt->{sleep}          || 1;
+    my $timeout     = $opt->{timeout}       || 120;
+    my $port        = $opt->{port}          || 6379;
+    my $slave_port  = $opt->{slave_port}    || $port;
+    my $master_port = $opt->{master_port}   || $port;
+    my $slave_host  = $opt->{slave_host}  ? $opt->{slave_host}  : '127.0.0.1';
+    my $master_host = $opt->{master_host} ? $opt->{master_host} : '127.0.0.1';
+    my $result_key  = $opt->{result_key}  ? $opt->{result_key} : 'slave';
+    my $pidfile     = $opt->{pidfile}  ? $opt->{pidfile} : '/tmp/redis-lag.pid';
 
 
-	$self->{redis_lag} = App::RedisLag->new(
-							timeout		=> $timeout,
-							verbose		=> $opt->{verbose},
-							debug		=> $opt->{debug},
-							daemon		=> $opt->{daemon},
-							slave_host	=> $slave_host,
-							slave_port	=> $slave_port,
-							result_key  => $result_key,
-							master_host	=> $master_host,
-							master_port	=> $master_port,
-						);
-						
-	if($opt->{munin_result}){
-		my $result = $self->{redis_lag}->get_result();
-		print "current.value $result->{current}\n";
-		print "avg.value $result->{avg}\n";
-		print "max.value $result->{max}\n";
-		print "min.value $result->{min}\n";
-		exit 0;
-	}
+    $self->{redis_lag} = App::RedisLag->new(
+                            timeout     => $timeout,
+                            verbose     => $opt->{verbose},
+                            debug       => $opt->{debug},
+                            daemon      => $opt->{daemon},
+                            slave_host  => $slave_host,
+                            slave_port  => $slave_port,
+                            result_key  => $result_key,
+                            master_host => $master_host,
+                            master_port => $master_port,
+                        );
+                        
+    if($opt->{munin_result}){
+        my $result = $self->{redis_lag}->get_result();
+        print "current.value $result->{current}\n";
+        print "avg.value $result->{avg}\n";
+        print "max.value $result->{max}\n";
+        print "min.value $result->{min}\n";
+        exit 0;
+    }
 
-	if($opt->{debug} && !$opt->{daemon}){
-		$self->run_loop();
-	}
-	if($opt->{daemon}){
-		my $pid = fork();
-		if(!defined $pid) {
-			die "Faild to fork(): $!\n";
-		}
-		exit 0 if $pid; # 親プロセスは終了する
-		POSIX::setsid() ||
-			die "Could not detach from parent process\n";
-		open(OUT, ">$pidfile");
-		print OUT POSIX::getpid;
-		close(OUT);
-		$self->run_loop();
-	}
-	else{
-		pod2usage 1;
-	}
+    if($opt->{debug} && !$opt->{daemon}){
+        $self->run_loop();
+    }
+    if($opt->{daemon}){
+        my $pid = fork();
+        if(!defined $pid) {
+            die "Faild to fork(): $!\n";
+        }
+        exit 0 if $pid; # 親プロセスは終了する
+        POSIX::setsid() ||
+            die "Could not detach from parent process\n";
+        open(OUT, ">$pidfile");
+        print OUT POSIX::getpid;
+        close(OUT);
+        $self->run_loop();
+    }
+    else{
+        pod2usage 1;
+    }
 
 }
 
 sub run_loop {
-	my $self = shift ;
-	while(1) {
-		$self->{redis_lag}->run;
-		sleep($self->{sleep});
-	}
+    my $self = shift ;
+    while(1) {
+        $self->{redis_lag}->run;
+        sleep($self->{sleep});
+    }
 }
-		
+        
 
 my $main = main->new();
 
@@ -145,7 +145,7 @@ redis-lag [options]
 
 =over 4
 
-=item -d, --daemon	
+=item -d, --daemon  
 
 start daemon
 
