@@ -8,3 +8,9 @@ redis-lagは、Redisのレプリケーション遅延を計測するためにデ
 
 しかし、まだ開発中です...
 
+
+参考にしたコード
+===============
+
+このツールは、 @toritori0318 さんのRedis-topを参考にしております。
+https://github.com/toritori0318/p5-App-RedisTop
