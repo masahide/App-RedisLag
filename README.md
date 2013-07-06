@@ -14,3 +14,11 @@ redis-lagは、Redisのレプリケーション遅延を計測するためにデ
 
 このツールは、 @toritori0318 さんのRedis-topを参考にしております。
 https://github.com/toritori0318/p5-App-RedisTop
+
+1ファイル化
+===========
+
+App::FatPacker を使って1ファイルのスクリプトにパックできます。
+
+$ cpanm install App::FatPacker
+$ PERL5LIB=./lib/ fatpack pack bin/redis-lag >redis-lag-packed.pl
