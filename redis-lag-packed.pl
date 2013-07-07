@@ -101,7 +101,6 @@ $fatpacked{"App/RedisLag.pm"} = <<'APP_REDISLAG';
   sub run {
       my ($self) = @_;
       my $time = $self->set_check_value();
-      $self->puts('debug', "set check value: $time") if $self->{debug};
       if(!$time){
           return $time;
       }
@@ -140,6 +139,7 @@ $fatpacked{"App/RedisLag.pm"} = <<'APP_REDISLAG';
   sub set_check_value {
       my ($self) = @_;
       $self->{set_time} = Time::HiRes::time;
+      $self->puts('debug', "set check key: $self->{key} value: $self->{set_time}") if $self->{debug};
       if($self->{master}->set_value($self->{key},$self->{set_time})){
           return $self->{set_time};
       }
@@ -158,10 +158,9 @@ $fatpacked{"App/RedisLag.pm"} = <<'APP_REDISLAG';
               return $self->{timeout};
           }
           my $value = $self->{slave}->get_value($self->{key});
-          if(!$value){
-              return $value;
-          }
-          elsif($set_time eq $value){
+  		#if(!$value){ return $value; }
+          if($set_time eq $value){
+  			$self->puts('debug', "get check key: $self->{key} value: $value") if $self->{debug};
               return $time - $set_time;
           }
           Time::HiRes::sleep($self->{wait});

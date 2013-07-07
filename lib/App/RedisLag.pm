@@ -151,8 +151,8 @@ sub get_check_value {
         }
         my $value = $self->{slave}->get_value($self->{key});
 		#if(!$value){ return $value; }
-        elsif($set_time eq $value){
-			$self->puts('debug', "get check key: $self->{key} value: $value) if $self->{debug};
+        if($set_time eq $value){
+			$self->puts('debug', "get check key: $self->{key} value: $value") if $self->{debug};
             return $time - $set_time;
         }
         Time::HiRes::sleep($self->{wait});
