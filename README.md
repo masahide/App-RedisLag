@@ -28,3 +28,8 @@ App::FatPacker を使って1ファイルのスクリプトにパックできま�
 $ cpanm install App::FatPacker
 $ PERL5LIB=./lib/ fatpack pack bin/redis-lag >redis-lag-packed.pl
 ```
+
+FatPackerでパックされたコードは、cpan等を使わなくても、1ファイルを設置すれば、
+ほとんどの環境で動くように作っています。
+
+パック済みのファイルは [こちら](https://github.com/masahide/App-RedisLag/blob/master/redis-lag-packed.pl)
