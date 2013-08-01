@@ -33,3 +33,31 @@ FatPackerでパックされたコードは、cpan等を使わなくても、1フ
 ほとんどの環境で動くように作っています。
 
 パック済みのファイルは [こちら](https://github.com/masahide/App-RedisLag/blob/master/redis-lag-packed.pl)
+
+
+munin plugin
+------------
+
+redis-lagを常駐させた状態で、
+以下のような単純なpluginを設置すればmuninに表示されます。
+
+```sh
+#!/bin/bash
+
+if [ "$1" = "config" ] ; then
+        echo graph_title Redis replication lag HOSTNAME
+        echo graph_vlabel sec
+        echo graph_category redis
+        echo graph_args -l 0
+        echo max.label max
+        echo max.draw AREA
+        echo avg.label avg
+        echo avg.draw AREA
+        echo min.label min
+        echo min.draw AREA
+        echo current.label current
+        echo current.draw LINE2
+else
+        /usr/local/bin/redis-lag-packed.pl --munin_result --result_key HOSTNAME
+fi
+```
