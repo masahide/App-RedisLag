@@ -268,7 +268,7 @@ $fatpacked{"App/RedisLag/Redis.pm"} = <<'APP_REDISLAG_REDIS';
           }
       }
       else{
-          return $self->error("socket connect error: $!");
+          return $self->error("socket connect error: $!",$!);
       }
       $self->{socket} = $sock;
   
