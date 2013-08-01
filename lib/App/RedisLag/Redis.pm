@@ -96,7 +96,9 @@ sub set_value {
 
 sub get_value {
     my ($self,$key) = @_;
-    $self->connect();
+    if($self->connect()==0){
+		return 0;	
+	}
     my @lines = $self->write_read("GET $key\r\n");
     if(!$#lines){ return 0;}
     if($#lines != 1){
@@ -108,7 +110,9 @@ sub get_value {
 
 sub write_read {
     my ($self,$in) = @_;
-    $self->connect();
+    if($self->connect()==0){
+		return 0;
+	}
     my $s = $self->{socket};
     my $server = $self->{server};
     my $selecter = IO::Select->new;
