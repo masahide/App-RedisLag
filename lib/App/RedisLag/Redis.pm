@@ -58,7 +58,7 @@ sub connect {
         }
     }
     else{
-        return $self->error("socket connect error: $!");
+        return $self->error("socket connect error: $!",$!);
     }
     $self->{socket} = $sock;
 
